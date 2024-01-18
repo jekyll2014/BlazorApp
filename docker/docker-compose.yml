@@ -1,0 +1,13 @@
+version: '3'
+services:
+  test-mssql:
+    container_name: test-mssql
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    volumes:
+      - ./db_backup:/usr/db_backup
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Password1!
+    ports:
+      - "1433:1433"
+    restart: unless-stopped

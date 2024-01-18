@@ -1,0 +1,487 @@
+﻿@page "/"
+@using BlazorApp.Shared.DTO
+@using System.Text.Json
+@using System.Net
+@inject HttpClient Http
+
+<PageTitle>Orders page</PageTitle>
+
+<p>INTUS test app.</p>
+
+@if (_orders == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <button @onclick="LoadAllData">Load all data</button>
+    <p></p>
+    <h1>Orders</h1>
+
+    <table>
+        <thead style="background-color: cornflowerblue">
+            <tr>
+                <th></th>
+                <th>Id</th>
+                <th>Name</th>
+                <th>State</th>
+                <th>Windows Count</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (var i = 0; i < _orders?.Count; i++)
+            {
+                var item = _orders[i];
+                <tr @onclick="async () => await ClickedOrderRow(item.Id)" style=@(_selectedOrderId==item.Id ? "background-color: powderblue" : "background-color: white")>
+                    <td>
+                        <p><button style="background-color: chartreuse" @onclick="async () => await ClickedOrderUpdate(item.Id)">Update</button></p>
+                    </td>
+                    <td>
+                        <p>@item.Id</p>
+                    </td>
+                    <td>
+                        <p><input type="text" @bind-value="item.Name" @bind-value:event="oninput" /></p>
+                    </td>
+                    <td>
+                        <p><input type="text" @bind-value="item.State" @bind-value:event="oninput" /></p>
+                    </td>
+                    <td>
+                        <p>@item.Windows?.Count</p>
+                    </td>
+                    <td>
+                        <p><button style="background-color: orangered " @onclick="async () => await ClickedOrderDelete(item.Id)">Delete</button></p>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button style="background-color: darkorange" @onclick="async () => await ClickedOrderAdd()">Add new order</button>
+    <h1></h1>
+
+    <h1>Windows</h1>
+    <table>
+        <thead style="background-color: cornflowerblue">
+            <tr>
+                <th></th>
+                <th>Id</th>
+                <th>Name</th>
+                <th>Qty.</th>
+                <th>Elements#</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (var i = 0; i < _selectedWindows?.Count; i++)
+            {
+                var item = _selectedWindows[i];
+                <tr @onclick="async () => await ClickedWindowRow(item.Id)" style=@(_selectedWindowId==item.Id ? "background-color: powderblue" : "background-color: white")>
+                    <td>
+                        <p><button style="background-color: chartreuse" @onclick="async () => await ClickedWindowUpdate(item.Id)">Update</button></p>
+                    </td>
+                    <td>
+                        <p>@item.Id</p>
+                    </td>
+                    <td>
+                        <p><input type="text" @bind-value="item.Name" @bind-value:event="oninput" /></p>
+                    </td>
+                    <td>
+                        <p><input type="number" @bind-value="item.QuantityOfWindows" @bind-value:event="oninput" /></p>
+                    </td>
+                    <td>
+                        <p>@item.TotalSubElements</p>
+                    </td>
+                    <td>
+                        <p><button style="background-color: orangered" @onclick="async () => await ClickedWindowDelete(item.Id)">Delete</button></p>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button style="background-color: darkorange" @onclick="async () => await ClickedWindowAdd(_selectedOrderId)">Add new window</button>
+    <h1></h1>
+
+    <h1>SubElements</h1>
+    <table>
+        <thead style="background-color: cornflowerblue">
+            <tr>
+                <th></th>
+                <th>Id</th>
+                <th>Element</th>
+                <th>Type</th>
+                <th>Width</th>
+                <th>Height</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (var i = 0; i < _selectedElements?.Count; i++)
+            {
+                var item = _selectedElements[i];
+                <tr @onclick="async () => await ClickedElementRow(item.Id)" style=@(_selectedElementId==item.Id ? "background-color: powderblue" : "background-color: white")>
+                    <td>
+                        <p><button style="background-color: chartreuse" @onclick="async () => await ClickedElementUpdate(item.Id)">Update</button></p>
+                    </td>
+                    <td>
+                        <p>@item.Id</p>
+                    </td>
+                    <td>
+                        <p><input type="text" @bind-value="item.Element" @bind-value:event="oninput" /></p>
+                    </td>
+                    <td>
+                        <p><input type="text" @bind-value="item.Type" @bind-value:event="oninput" /></p>
+                    </td>
+                    <td>
+                        <p><input type="number" @bind-value="item.Width" @bind-value:event="oninput" /></p>
+                    </td>
+                    <td>
+                        <p><input type="number" @bind-value="item.Height" @bind-value:event="oninput" /></p>
+                    </td>
+                    <td>
+                        <p><button style="background-color: orangered" @onclick="async () => await ClickedElementDelete(item.Id)">Delete</button></p>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button style="background-color: darkorange" @onclick="async () => await ClickedElementAdd(_selectedWindowId)">Add new sub-element</button>
+}
+
+@code {
+    private List<OrderDto>? _orders;
+    private List<WindowDto>? _selectedWindows = null;
+    private List<SubElementDto>? _selectedElements = null;
+    private int _selectedOrderId = -1;
+    private int _selectedWindowId = -1;
+    private int _selectedElementId = -1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _orders = await GetOrders(String.Empty);
+    }
+    
+    private async Task LoadAllData()
+    {
+        _orders?.Clear();
+        _selectedWindows?.Clear();
+        _selectedElements?.Clear();
+        _orders = await GetOrders($"Include={nameof(OrderDto.Windows)}.{nameof(WindowDto.Elements)}");
+        StateHasChanged();
+    }
+
+    private async Task<List<OrderDto>?> GetOrders(string queryParameters)
+    {
+        return await Http.GetFromJsonAsync<List<OrderDto>>($"/api/Orders/GetByQuery?{queryParameters}");
+    }
+
+    // Element operations
+    private async Task ClickedElementRow(int id)
+    {
+        var selectedItem = _selectedElements?.FirstOrDefault(n => n.Id == id);
+        if (selectedItem != null)
+        {
+            _selectedElementId = id;
+        }
+        else
+        {
+            _selectedElementId = -1;
+            // show error message
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ClickedElementAdd(int windowId)
+    {
+        if (windowId < 0)
+            return;
+
+        var item = new SubElementDto() { WindowId = windowId };
+        var response = await Http.PostAsJsonAsync($"/api/SubElements/Create", item);
+
+        if (response.StatusCode == HttpStatusCode.OK)
+        {
+            var newItem = await response.Content.ReadFromJsonAsync<SubElementDto>();
+            if (newItem != null && newItem.Id > 0)
+            {
+                _selectedElements?.Add(newItem);
+            }
+            else
+            {
+                // show error message
+            }
+        }
+        else
+        {
+            // show error message
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ClickedElementUpdate(int id)
+    {
+        var item = _selectedElements?.FirstOrDefault(n => n.Id == id);
+        if (item != null)
+        {
+            var response = await Http.PutAsJsonAsync($"/api/SubElements/Update", item);
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                var newItem = await response.Content.ReadFromJsonAsync<SubElementDto>();
+            }
+            else
+            {
+                var oldItem = await Http.GetFromJsonAsync<SubElementDto>($"/api/SubElements/GetById/{id}");
+                if (oldItem != null)
+                {
+                    item.Type = oldItem.Type;
+                    item.Element = oldItem.Element;
+                    item.Height = oldItem.Height;
+                    item.Width = oldItem.Width;
+                }
+                // mark row with red color
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClickedElementDelete(int id)
+    {
+        var item = _selectedElements?.FirstOrDefault(n => n.Id == id);
+        if (item != null)
+        {
+            var response = await Http.DeleteAsync($"/api/SubElements/Delete/{id}");
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                _selectedElements?.Remove(item);
+                _selectedElementId = -1;
+                StateHasChanged();
+            }
+            else
+            {
+                // mark row with red color
+            }
+        }
+    }
+
+    // Window operations
+    private async Task ClickedWindowRow(int id)
+    {
+        var selectedItem = _selectedWindows?.FirstOrDefault(n => n.Id == id);
+        if (selectedItem != null)
+        {
+            try
+            {
+                if (selectedItem.Elements == null || !selectedItem.Elements.Any())
+                    selectedItem.Elements = await Http.GetFromJsonAsync<List<SubElementDto>>(
+                            $"/api/SubElements/GetByQuery?WindowId={id}");
+
+                _selectedElements = selectedItem.Elements;
+                _selectedWindowId = id;
+
+                if (_selectedElements != null && _selectedElements.Any())
+                    await ClickedElementRow(_selectedElements.First().Id);
+                else
+                    _selectedElementId = -1;
+            }
+            catch (Exception e)
+            {
+                _selectedWindowId = -1;
+                // show error message
+            }
+        }
+        else
+        {
+            _selectedWindowId = -1;
+            // show error message
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ClickedWindowAdd(int orderId)
+    {
+        if (orderId < 0)
+            return;
+
+        var item = new WindowDto { OrderId = orderId };
+        var response = await Http.PostAsJsonAsync(
+            $"/api/Windows/Create",
+            item);
+
+        if (response.StatusCode == HttpStatusCode.OK)
+        {
+            var newItem = await response.Content.ReadFromJsonAsync<WindowDto>();
+            if (newItem != null && newItem.Id > 0)
+            {
+                _selectedWindows?.Add(newItem);
+                await ClickedWindowRow(newItem.Id);
+            }
+            else
+            {
+                // show error message
+            }
+        }
+        else
+        {
+            // show error message
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ClickedWindowUpdate(int id)
+    {
+        var item = _selectedWindows?.FirstOrDefault(n => n.Id == id);
+        if (item != null)
+        {
+            var response = await Http.PutAsJsonAsync($"/api/Windows/Update", item);
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                var newItem = await response.Content.ReadFromJsonAsync<WindowDto>();
+            }
+            else
+            {
+                var oldItem = await Http.GetFromJsonAsync<WindowDto>($"/api/Windows/GetById/{id}");
+                if (oldItem != null)
+                {
+                    item.Name = oldItem.Name;
+                    item.OrderId = oldItem.OrderId;
+                    item.QuantityOfWindows = oldItem.QuantityOfWindows;
+                }
+                // mark row with red color
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClickedWindowDelete(int id)
+    {
+        var item = _selectedWindows?.FirstOrDefault(n => n.Id == id);
+        if (item != null)
+        {
+            var response = await Http.DeleteAsync($"/api/Windows/Delete/{id}");
+
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                _selectedWindows?.Remove(item);
+                _selectedWindowId = -1;
+                StateHasChanged();
+            }
+            else
+            {
+                // mark row with red color
+            }
+        }
+    }
+
+    // Order operations
+    private async Task ClickedOrderRow(int id)
+    {
+        var selectedItem = _orders?.FirstOrDefault(n => n.Id == id);
+        if (selectedItem != null)
+        {
+            try
+            {
+                if (selectedItem.Windows == null || !selectedItem.Windows.Any())
+                    selectedItem.Windows = await Http.GetFromJsonAsync<List<WindowDto>>(
+                            $"/api/Windows/GetByQuery?OrderId={id}");
+
+                _selectedWindows = selectedItem.Windows;
+                _selectedOrderId = id;
+
+                if (_selectedWindows != null && _selectedWindows.Any())
+                    await ClickedWindowRow(_selectedWindows.First().Id);
+                else
+                    _selectedWindowId = -1;
+            }
+            catch (Exception e)
+            {
+                _selectedOrderId = -1;
+                // show error message
+            }
+        }
+        else
+        {
+            _selectedOrderId = -1;
+            // show error message
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ClickedOrderAdd()
+    {
+        var item = new OrderDto();
+        var response = await Http.PostAsJsonAsync(
+            $"/api/Orders/Create",
+            item);
+
+        if (response.StatusCode == HttpStatusCode.OK)
+        {
+            var newItem = await response.Content.ReadFromJsonAsync<OrderDto>();
+            if (newItem != null && newItem.Id > 0)
+            {
+                _orders?.Add(newItem);
+                await ClickedOrderRow(newItem.Id);
+            }
+            else
+            {
+                // show error message
+            }
+        }
+        else
+        {
+            // show error message
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ClickedOrderUpdate(int id)
+    {
+        var item = _orders?.FirstOrDefault(n => n.Id == id);
+        if (item != null)
+        {
+            var response = await Http.PutAsJsonAsync($"/api/Orders/Update", item);
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                var newItem = await response.Content.ReadFromJsonAsync<OrderDto>();
+            }
+            else
+            {
+                var oldItem = await Http.GetFromJsonAsync<OrderDto>($"/api/Orders/GetById/{id}");
+                if (oldItem != null)
+                {
+                    item.State = oldItem.State;
+                    item.Name = oldItem.Name;
+                }
+                // mark row with red color
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClickedOrderDelete(int id)
+    {
+        var item = _orders?.FirstOrDefault(n => n.Id == id);
+        if (item != null)
+        {
+            var response = await Http.DeleteAsync($"/api/Orders/Delete/{id}");
+
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                _orders?.Remove(item);
+                _selectedOrderId = -1;
+                StateHasChanged();
+            }
+            else
+            {
+                // mark row with red color
+            }
+        }
+    }
+}
