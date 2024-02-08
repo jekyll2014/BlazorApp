@@ -51,9 +51,11 @@ namespace BlazorApp.Server.Services
             return result;
         }
 
-        public OrderDto GetById(int id)
+        public async Task<OrderDto> GetById(int id)
         {
-            return _mapper.Map<OrderDto>(_repository.GetById(id));
+            var result = await _repository.GetById(id);
+
+            return _mapper.Map<OrderDto>(result);
         }
 
         public async Task<OrderDto> CreateAsync(OrderDto newItem)

@@ -1,153 +1,176 @@
 ﻿@page "/"
 @using BlazorApp.Shared.DTO
-@using System.Text.Json
 @using System.Net
+@using BlazorApp.Shared;
+
 @inject HttpClient Http
 
 <PageTitle>Orders page</PageTitle>
 
 <p>INTUS test app.</p>
 
+<div style="padding: 5px 8px; background-color: lightblue">
+    <p>Login: <input disabled="@_authenticated" type="text" @bind-value="_loginModel.UserName" @bind-value:event="oninput" /></p>
+    <p>Password: <input disabled="@_authenticated" type="password" @bind-value="_loginModel.Password" @bind-value:event="oninput" /></p>
+    <p>Stay logged in <input disabled="@_authenticated" type="checkbox" @bind-value="_loginModel.RememberLogin" @bind-value:event="oninput" /></p>
+    <button @onclick="async () => await LoginClicked()">@(_authenticated ? "Logout" : "Login")</button>
+</div>
+
 @if (_orders == null)
 {
-    <p><em>Loading...</em></p>
+    <p><em>No data loaded</em></p>
+}
+else if (!_authenticated)
+{
+    <p><em>Not logged in</em></p>
 }
 else
 {
-    <button @onclick="LoadAllData">Load all data</button>
-    <p></p>
-    <h1>Orders</h1>
+    <div style="visibility:@(_authenticated ? "visible" : "hidden")">
+        <p></p>
 
-    <table>
-        <thead style="background-color: cornflowerblue">
-            <tr>
-                <th></th>
-                <th>Id</th>
-                <th>Name</th>
-                <th>State</th>
-                <th>Windows Count</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @for (var i = 0; i < _orders?.Count; i++)
-            {
-                var item = _orders[i];
-                <tr @onclick="async () => await ClickedOrderRow(item.Id)" style=@(_selectedOrderId==item.Id ? "background-color: powderblue" : "background-color: white")>
-                    <td>
-                        <p><button style="background-color: chartreuse" @onclick="async () => await ClickedOrderUpdate(item.Id)">Update</button></p>
-                    </td>
-                    <td>
-                        <p>@item.Id</p>
-                    </td>
-                    <td>
-                        <p><input type="text" @bind-value="item.Name" @bind-value:event="oninput" /></p>
-                    </td>
-                    <td>
-                        <p><input type="text" @bind-value="item.State" @bind-value:event="oninput" /></p>
-                    </td>
-                    <td>
-                        <p>@item.Windows?.Count</p>
-                    </td>
-                    <td>
-                        <p><button style="background-color: orangered " @onclick="async () => await ClickedOrderDelete(item.Id)">Delete</button></p>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-    <button style="background-color: darkorange" @onclick="async () => await ClickedOrderAdd()">Add new order</button>
-    <h1></h1>
+        <p><em>User roles: @(_userInfo?.Roles.Aggregate((n, m) => n = n + "," + m).Trim(','))</em></p>
+        <p></p>
 
-    <h1>Windows</h1>
-    <table>
-        <thead style="background-color: cornflowerblue">
-            <tr>
-                <th></th>
-                <th>Id</th>
-                <th>Name</th>
-                <th>Qty.</th>
-                <th>Elements#</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @for (var i = 0; i < _selectedWindows?.Count; i++)
-            {
-                var item = _selectedWindows[i];
-                <tr @onclick="async () => await ClickedWindowRow(item.Id)" style=@(_selectedWindowId==item.Id ? "background-color: powderblue" : "background-color: white")>
-                    <td>
-                        <p><button style="background-color: chartreuse" @onclick="async () => await ClickedWindowUpdate(item.Id)">Update</button></p>
-                    </td>
-                    <td>
-                        <p>@item.Id</p>
-                    </td>
-                    <td>
-                        <p><input type="text" @bind-value="item.Name" @bind-value:event="oninput" /></p>
-                    </td>
-                    <td>
-                        <p><input type="number" @bind-value="item.QuantityOfWindows" @bind-value:event="oninput" /></p>
-                    </td>
-                    <td>
-                        <p>@item.TotalSubElements</p>
-                    </td>
-                    <td>
-                        <p><button style="background-color: orangered" @onclick="async () => await ClickedWindowDelete(item.Id)">Delete</button></p>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-    <button style="background-color: darkorange" @onclick="async () => await ClickedWindowAdd(_selectedOrderId)">Add new window</button>
-    <h1></h1>
+        <button @onclick="LoadAllData">Load all data</button>
+        <p></p>
 
-    <h1>SubElements</h1>
-    <table>
-        <thead style="background-color: cornflowerblue">
-            <tr>
-                <th></th>
-                <th>Id</th>
-                <th>Element</th>
-                <th>Type</th>
-                <th>Width</th>
-                <th>Height</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @for (var i = 0; i < _selectedElements?.Count; i++)
-            {
-                var item = _selectedElements[i];
-                <tr @onclick="async () => await ClickedElementRow(item.Id)" style=@(_selectedElementId==item.Id ? "background-color: powderblue" : "background-color: white")>
-                    <td>
-                        <p><button style="background-color: chartreuse" @onclick="async () => await ClickedElementUpdate(item.Id)">Update</button></p>
-                    </td>
-                    <td>
-                        <p>@item.Id</p>
-                    </td>
-                    <td>
-                        <p><input type="text" @bind-value="item.Element" @bind-value:event="oninput" /></p>
-                    </td>
-                    <td>
-                        <p><input type="text" @bind-value="item.Type" @bind-value:event="oninput" /></p>
-                    </td>
-                    <td>
-                        <p><input type="number" @bind-value="item.Width" @bind-value:event="oninput" /></p>
-                    </td>
-                    <td>
-                        <p><input type="number" @bind-value="item.Height" @bind-value:event="oninput" /></p>
-                    </td>
-                    <td>
-                        <p><button style="background-color: orangered" @onclick="async () => await ClickedElementDelete(item.Id)">Delete</button></p>
-                    </td>
+        <h1>Orders</h1>
+        <table>
+            <thead style="background-color: cornflowerblue">
+                <tr>
+                    <th></th>
+                    <th>Id</th>
+                    <th>Name</th>
+                    <th>State</th>
+                    <th>Windows count</th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
-    <button style="background-color: darkorange" @onclick="async () => await ClickedElementAdd(_selectedWindowId)">Add new sub-element</button>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < _orders?.Count; i++)
+                {
+                    var item = _orders[i];
+                    <tr @onclick="async () => await ClickedOrderRow(item.Id)" style=@(_selectedOrderId == item.Id ? "background-color: powderblue" : "background-color: white")>
+                        <td>
+                            <p><button style="background-color: chartreuse" @onclick="async () => await ClickedOrderUpdate(item.Id)">Update</button></p>
+                        </td>
+                        <td>
+                            <p>@item.Id</p>
+                        </td>
+                        <td>
+                            <p><input type="text" @bind-value="item.Name" @bind-value:event="oninput" /></p>
+                        </td>
+                        <td>
+                            <p><input type="text" @bind-value="item.State" @bind-value:event="oninput" /></p>
+                        </td>
+                        <td>
+                            <p>@item.Windows?.Count</p>
+                        </td>
+                        <td>
+                            <p><button style="background-color: orangered " @onclick="async () => await ClickedOrderDelete(item.Id)">Delete</button></p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <button style="background-color: darkorange" @onclick="async () => await ClickedOrderAdd()">Add new order</button>
+        <h1></h1>
+
+        <h1>Windows</h1>
+        <table>
+            <thead style="background-color: cornflowerblue">
+                <tr>
+                    <th></th>
+                    <th>Id</th>
+                    <th>Name</th>
+                    <th>Qty.</th>
+                    <th>Elements count</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < _selectedWindows?.Count; i++)
+                {
+                    var item = _selectedWindows[i];
+                    <tr @onclick="async () => await ClickedWindowRow(item.Id)" style=@(_selectedWindowId == item.Id ? "background-color: powderblue" : "background-color: white")>
+                        <td>
+                            <p><button style="background-color: chartreuse" @onclick="async () => await ClickedWindowUpdate(item.Id)">Update</button></p>
+                        </td>
+                        <td>
+                            <p>@item.Id</p>
+                        </td>
+                        <td>
+                            <p><input type="text" @bind-value="item.Name" @bind-value:event="oninput" /></p>
+                        </td>
+                        <td>
+                            <p><input type="number" @bind-value="item.QuantityOfWindows" @bind-value:event="oninput" /></p>
+                        </td>
+                        <td>
+                            <p>@item.TotalSubElements</p>
+                        </td>
+                        <td>
+                            <p><button style="background-color: orangered" @onclick="async () => await ClickedWindowDelete(item.Id)">Delete</button></p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <button style="background-color: darkorange" @onclick="async () => await ClickedWindowAdd(_selectedOrderId)">Add new window</button>
+        <h1></h1>
+
+        <h1>SubElements</h1>
+        <table>
+            <thead style="background-color: cornflowerblue">
+                <tr>
+                    <th></th>
+                    <th>Id</th>
+                    <th>Element</th>
+                    <th>Type</th>
+                    <th>Width</th>
+                    <th>Height</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < _selectedElements?.Count; i++)
+                {
+                    var item = _selectedElements[i];
+                    <tr @onclick="async () => ClickedElementRow(item.Id)" style=@(_selectedElementId == item.Id ? "background-color: powderblue" : "background-color: white")>
+                        <td>
+                            <p><button style="background-color: chartreuse" @onclick="async () => await ClickedElementUpdate(item.Id)">Update</button></p>
+                        </td>
+                        <td>
+                            <p>@item.Id</p>
+                        </td>
+                        <td>
+                            <p><input type="text" @bind-value="item.Element" @bind-value:event="oninput" /></p>
+                        </td>
+                        <td>
+                            <p><input type="text" @bind-value="item.Type" @bind-value:event="oninput" /></p>
+                        </td>
+                        <td>
+                            <p><input type="number" @bind-value="item.Width" @bind-value:event="oninput" /></p>
+                        </td>
+                        <td>
+                            <p><input type="number" @bind-value="item.Height" @bind-value:event="oninput" /></p>
+                        </td>
+                        <td>
+                            <p><button style="background-color: orangered" @onclick="async () => await ClickedElementDelete(item.Id)">Delete</button></p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <button style="background-color: darkorange" @onclick="async () => await ClickedElementAdd(_selectedWindowId)">Add new sub-element</button>
+    </div>
 }
 
 @code {
+    private LoginModel _loginModel = new LoginModel();
+    private UserInfoModel? _userInfo = new UserInfoModel();
+    private bool _authenticated = false;
+
     private List<OrderDto>? _orders;
     private List<WindowDto>? _selectedWindows = null;
     private List<SubElementDto>? _selectedElements = null;
@@ -157,25 +180,110 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _orders = await GetOrders(String.Empty);
+        _userInfo = await Http.GetFromJsonAsync<UserInfoModel>($"/Authenticate/IsLoggedIn/");
+
+        if (_userInfo != null)
+        {
+            _authenticated = true;
+            _loginModel.UserName = _userInfo.UserName;
+            _loginModel.RememberLogin = true;
+            _orders = await GetOrders(string.Empty);
+            _selectedOrderId = -1;
+            _selectedWindowId = -1;
+            _selectedElementId = -1;
+        }
+        else
+        {
+            _authenticated = false;
+        }
+
+        StateHasChanged();
     }
-    
+
+    private async Task LoginClicked()
+    {
+        if (_authenticated)
+        {
+            await Logout();
+        }
+        else
+        {
+            _userInfo = await Login(_loginModel);
+            if (_userInfo != null)
+                _loginModel.Password = string.Empty;
+        }
+
+        if (_authenticated)
+        {
+            _loginModel.Password = string.Empty;
+            _selectedOrderId = -1;
+            _selectedWindowId = -1;
+            _selectedElementId = -1;
+            _orders = await GetOrders(string.Empty);
+        }
+        else
+        {
+            _orders = null;
+            _selectedWindows = null;
+            _selectedElements = null;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task<UserInfoModel?> Login(LoginModel loginModel)
+    {
+        var result = await Http.PostAsJsonAsync<LoginModel>($"/Authenticate/Login/", loginModel);
+        if (result.IsSuccessStatusCode)
+        {
+            _authenticated = true;
+            _userInfo = await result.Content.ReadFromJsonAsync<UserInfoModel>();
+        }
+        else
+        {
+            _authenticated = false;
+            _userInfo = null;
+        }
+
+        return _userInfo;
+    }
+
+    private async Task Logout()
+    {
+        var result = await Http.PostAsync($"/Authenticate/Logout/", null);
+        if (result.IsSuccessStatusCode)
+        {
+            _authenticated = false;
+        }
+    }
+
     private async Task LoadAllData()
     {
         _orders?.Clear();
         _selectedWindows?.Clear();
         _selectedElements?.Clear();
         _orders = await GetOrders($"Include={nameof(OrderDto.Windows)}.{nameof(WindowDto.Elements)}");
+        await ClickedOrderRow(1);
         StateHasChanged();
     }
 
     private async Task<List<OrderDto>?> GetOrders(string queryParameters)
     {
-        return await Http.GetFromJsonAsync<List<OrderDto>>($"/api/Orders/GetByQuery?{queryParameters}");
+        List<OrderDto>? orders = null;
+        try
+        {
+            orders = await Http.GetFromJsonAsync<List<OrderDto>>($"/api/Orders/GetByQuery?{queryParameters}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+
+        return orders;
     }
 
     // Element operations
-    private async Task ClickedElementRow(int id)
+    private void ClickedElementRow(int id)
     {
         var selectedItem = _selectedElements?.FirstOrDefault(n => n.Id == id);
         if (selectedItem != null)
@@ -281,7 +389,7 @@ else
                 _selectedWindowId = id;
 
                 if (_selectedElements != null && _selectedElements.Any())
-                    await ClickedElementRow(_selectedElements.First().Id);
+                    ClickedElementRow(_selectedElements.First().Id);
                 else
                     _selectedElementId = -1;
             }

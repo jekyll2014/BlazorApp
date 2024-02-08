@@ -66,9 +66,9 @@ namespace BlazorApp.Server.Services
             return result;
         }
 
-        public SubElementDto GetById(int id)
+        public async Task<SubElementDto> GetById(int id)
         {
-            return _mapper.Map<SubElementDto>(_repository.GetById(id));
+            return _mapper.Map<SubElementDto>(await _repository.GetById(id));
         }
 
         public async Task<SubElementDto> CreateAsync(SubElementDto newItem)

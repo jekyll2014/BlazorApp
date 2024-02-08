@@ -2,10 +2,12 @@
 using BlazorApp.Server.Services.QueryModels;
 using BlazorApp.Shared.DTO;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlazorApp.Server.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class OrdersController : ControllerBase
@@ -24,9 +26,9 @@ namespace BlazorApp.Server.Controllers
         }
 
         [HttpGet("GetById/{id}")]
-        public OrderDto GetById(int id)
+        public async Task<OrderDto> GetById(int id)
         {
-            return _service.GetById(id);
+            return await _service.GetById(id);
         }
 
         [HttpPost("Create")]

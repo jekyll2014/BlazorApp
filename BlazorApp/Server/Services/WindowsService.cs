@@ -56,9 +56,9 @@ namespace BlazorApp.Server.Services
             return result;
         }
 
-        public WindowDto GetById(int id)
+        public async Task<WindowDto> GetById(int id)
         {
-            return _mapper.Map<WindowDto>(_repository.GetById(id));
+            return _mapper.Map<WindowDto>(await _repository.GetById(id));
         }
 
         public async Task<WindowDto> CreateAsync(WindowDto newItem)

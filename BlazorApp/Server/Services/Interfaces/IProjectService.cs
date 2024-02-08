@@ -7,7 +7,7 @@ namespace BlazorApp.Server.Services.Interfaces
         where TK : IGetQuery
     {
         IEnumerable<T> Get(TK request);
-        T GetById(int id);
+        Task<T> GetById(int id);
         Task<T> CreateAsync(T newItem);
         Task<T> UpdateAsync(T item);
         void DeleteAsync(int id);
